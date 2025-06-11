@@ -1,16 +1,7 @@
 using UnityEngine;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController
 {
-    [SerializeField] PlayerView playerView;
-    [SerializeField] Vector2Int startGridPos;
-    [SerializeField] MapBoundary mapBoundary;
-    [SerializeField] float holdThreshold = 0.1f;
-    [SerializeField] float longPressThreshold = 0.2f;
-    [SerializeField] float fastLongPressThreshold = 2f;
-    [SerializeField] float longPressInterval = 4f;
-    [SerializeField] float fastLongPressInterval = 8f;
-
     private PlayerPresenter presenter;
 
     private Vector2Int holdDir = Vector2Int.zero;
@@ -18,33 +9,36 @@ public class PlayerController : MonoBehaviour
     private float lastMoveTime = 0f;
     private bool isHolding = false;
 
-    void Start()
+    private float holdThreshold = 0.1f;
+    private float longPressThreshold = 0.2f;
+    private float fastLongPressThreshold = 2f;
+    private float longPressInterval = 4f;
+    private float fastLongPressInterval = 8f;
+
+    public PlayerController(PlayerPresenter presenter)
     {
-        presenter = new PlayerPresenter(playerView, startGridPos, mapBoundary);
+        this.presenter = presenter;
     }
 
-    void Update()
+    public void Update()
     {
-        // 入力取得
-        Vector2Int dir = Vector2Int.zero;
+        var dir = Vector2Int.zero;
         if (Input.GetKey(KeyCode.LeftArrow)) dir = Vector2Int.left;
         if (Input.GetKey(KeyCode.RightArrow)) dir = Vector2Int.right;
         if (Input.GetKey(KeyCode.UpArrow)) dir = Vector2Int.up;
         if (Input.GetKey(KeyCode.DownArrow)) dir = Vector2Int.down;
 
-        // 新規押下
         if (dir != Vector2Int.zero && holdDir == Vector2Int.zero)
         {
             holdDir = dir;
             keyDownTime = Time.time;
             lastMoveTime = 0f;
             isHolding = false;
-            presenter.Move(holdDir); // 単発押しで1マスだけ進む
+            presenter.Move(holdDir);
         }
-        // 長押し判定
         else if (dir == holdDir && holdDir != Vector2Int.zero)
         {
-            float held = Time.time - keyDownTime;
+            var held = Time.time - keyDownTime;
             if (!isHolding)
             {
                 if (held >= holdThreshold)
@@ -55,7 +49,7 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                float interval = 1f / (held >= fastLongPressThreshold ? fastLongPressInterval : (held >= longPressThreshold ? longPressInterval: 1f));
+                var interval = 1f / (held >= fastLongPressThreshold ? fastLongPressInterval : (held >= longPressThreshold ? longPressInterval : 1f));
                 if (Time.time - lastMoveTime >= interval)
                 {
                     presenter.Move(holdDir);
@@ -63,13 +57,10 @@ public class PlayerController : MonoBehaviour
                 }
             }
         }
-        // 離した
         else if (dir == Vector2Int.zero)
         {
             holdDir = Vector2Int.zero;
             isHolding = false;
         }
     }
-
-    public Vector2Int GetPlayerGridPos() => presenter.GetPosition();
 }

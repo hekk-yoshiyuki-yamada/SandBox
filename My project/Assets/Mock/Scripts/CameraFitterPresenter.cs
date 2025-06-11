@@ -5,29 +5,32 @@ public class CameraFitterPresenter
     private CameraFitterView view;
     private Camera camera;
     private MapBoundary mapBoundary;
+    private float margin;
+    private PlayerView playerView;
 
-    public CameraFitterPresenter(CameraFitterView view, Camera camera, MapBoundary mapBoundary)
+    public CameraFitterPresenter(CameraFitterView view, Camera camera, MapBoundary mapBoundary, float margin, PlayerView playerView)
     {
         this.view = view;
         this.camera = camera;
         this.mapBoundary = mapBoundary;
+        this.margin = margin;
+        this.playerView = playerView;
     }
 
-    public void Follow(Vector2 target)
+    public void FollowPlayer()
     {
-        Rect movableRect = mapBoundary.GetCameraMovableRect();
+        if (playerView == null) return;
+        var playerPos = playerView.transform.position;
+        var camPos = camera.transform.position;
 
-        float vertExtent = camera.orthographicSize;
-        float horzExtent = vertExtent * Screen.width / Screen.height;
+        // カメラ移動可能範囲で制限
+        var movableRect = mapBoundary.GetCameraMovableRect();
+        var halfHeight = camera.orthographicSize;
+        var halfWidth = halfHeight * ((float)Screen.width / Screen.height);
 
-        float minX = movableRect.xMin + horzExtent;
-        float maxX = movableRect.xMax - horzExtent;
-        float minY = movableRect.yMin + vertExtent;
-        float maxY = movableRect.yMax - vertExtent;
+        camPos.x = Mathf.Clamp(playerPos.x, movableRect.xMin + halfWidth, movableRect.xMax - halfWidth);
+        camPos.y = Mathf.Clamp(playerPos.y, movableRect.yMin + halfHeight, movableRect.yMax - halfHeight);
 
-        float x = Mathf.Clamp(target.x, minX, maxX);
-        float y = Mathf.Clamp(target.y, minY, maxY);
-
-        view.SetCameraPosition(new Vector3(x, y, view.transform.position.z));
+        view.SetCameraPosition(camPos);
     }
 }

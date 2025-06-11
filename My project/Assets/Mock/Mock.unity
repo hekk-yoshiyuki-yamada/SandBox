@@ -119,36 +119,11 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!212 &106531757 stripped
-SpriteRenderer:
-  m_CorrespondingSourceObject: {fileID: 2025861317694583654, guid: cb0cccc53300f447692a8b05ca06f2b5, type: 3}
-  m_PrefabInstance: {fileID: 1622126816}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &523461509 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8187025650474407399, guid: cb0cccc53300f447692a8b05ca06f2b5, type: 3}
   m_PrefabInstance: {fileID: 1622126816}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &523461511
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 523461509}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 776bc5fe2cf64b748523d4a9a76e51ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerView: {fileID: 523461512}
-  startGridPos: {x: 1, y: 1}
-  mapBoundary: {fileID: 553878629}
-  holdThreshold: 0.1
-  longPressThreshold: 0.2
-  fastLongPressThreshold: 2
-  longPressInterval: 4
-  fastLongPressInterval: 8
 --- !u!114 &523461512
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -161,7 +136,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8b8c81ec59104a2c93e41eb75bc66c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spriteRenderer: {fileID: 106531757}
+  startGridPos: {x: 1, y: 1}
+  mapBoundary: {fileID: 553878629}
 --- !u!1 &553878627 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3079349501599735261, guid: cb0cccc53300f447692a8b05ca06f2b5, type: 3}
@@ -198,21 +174,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1ff48eab133246b79304cfb54a2d67f8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &1516248323
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1516248316}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 56ae0abe0f3b4caa92fd4fcc1f1e2265, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  cameraView: {fileID: 1516248322}
-  playerController: {fileID: 523461511}
+  targetCamera: {fileID: 1516248328}
   mapBoundary: {fileID: 553878629}
+  margin: 0.5
+  playerView: {fileID: 523461512}
+--- !u!20 &1516248328 stripped
+Camera:
+  m_CorrespondingSourceObject: {fileID: 2466248990846290930, guid: cb0cccc53300f447692a8b05ca06f2b5, type: 3}
+  m_PrefabInstance: {fileID: 1622126816}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1622126816
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -283,16 +253,10 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 5266891718474725598, guid: cb0cccc53300f447692a8b05ca06f2b5, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1516248323}
-    - targetCorrespondingSourceObject: {fileID: 5266891718474725598, guid: cb0cccc53300f447692a8b05ca06f2b5, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1516248322}
     - targetCorrespondingSourceObject: {fileID: 8187025650474407399, guid: cb0cccc53300f447692a8b05ca06f2b5, type: 3}
       insertIndex: -1
       addedObject: {fileID: 523461512}
-    - targetCorrespondingSourceObject: {fileID: 8187025650474407399, guid: cb0cccc53300f447692a8b05ca06f2b5, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 523461511}
     - targetCorrespondingSourceObject: {fileID: 3079349501599735261, guid: cb0cccc53300f447692a8b05ca06f2b5, type: 3}
       insertIndex: -1
       addedObject: {fileID: 553878629}

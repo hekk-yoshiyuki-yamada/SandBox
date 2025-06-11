@@ -6,6 +6,7 @@ public class MapBoundary : MonoBehaviour, IPlayerMapBoundary
     [SerializeField] float cellSize = 1f;
 
     private Bounds mapBounds;
+    public Bounds MapBounds => mapBounds;
 
     private void Awake()
     {
@@ -17,11 +18,11 @@ public class MapBoundary : MonoBehaviour, IPlayerMapBoundary
 
     public bool CanMove(Vector2Int gridPos)
     {
-        Vector2 worldPos = new Vector2(gridPos.x * cellSize, gridPos.y * cellSize);
-        float minX = mapBounds.min.x + cellSize;
-        float maxX = mapBounds.max.x - cellSize;
-        float minY = mapBounds.min.y + cellSize;
-        float maxY = mapBounds.max.y - cellSize;
+        var worldPos = new Vector2(gridPos.x * cellSize, gridPos.y * cellSize);
+        var minX = mapBounds.min.x + cellSize;
+        var maxX = mapBounds.max.x - cellSize;
+        var minY = mapBounds.min.y + cellSize;
+        var maxY = mapBounds.max.y - cellSize;
 
         Debug.Log($"Checking if can move to {worldPos}: " +
             $"minX={minX}, maxX={maxX}, minY={minY}, maxY={maxY}");
