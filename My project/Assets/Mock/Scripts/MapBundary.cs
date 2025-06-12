@@ -4,6 +4,7 @@ public class MapBoundary : MonoBehaviour, IPlayerMapBoundary
 {
     [SerializeField] SpriteRenderer mapSpriteRenderer;
     [SerializeField] float cellSize = 1f;
+    [SerializeField] float mapOuterPadding = 1f;
 
     private Bounds mapBounds;
     public Bounds MapBounds => mapBounds;
@@ -19,14 +20,10 @@ public class MapBoundary : MonoBehaviour, IPlayerMapBoundary
     public bool CanMove(Vector2Int gridPos)
     {
         var worldPos = new Vector2(gridPos.x * cellSize, gridPos.y * cellSize);
-        var minX = mapBounds.min.x + cellSize;
-        var maxX = mapBounds.max.x - cellSize;
-        var minY = mapBounds.min.y + cellSize;
-        var maxY = mapBounds.max.y - cellSize;
-
-        Debug.Log($"Checking if can move to {worldPos}: " +
-            $"minX={minX}, maxX={maxX}, minY={minY}, maxY={maxY}");
-
+        var minX = mapBounds.min.x + cellSize + mapOuterPadding;
+        var maxX = mapBounds.max.x - cellSize - mapOuterPadding;
+        var minY = mapBounds.min.y + cellSize + mapOuterPadding;
+        var maxY = mapBounds.max.y - cellSize - mapOuterPadding;
         return worldPos.x >= minX && worldPos.x < maxX &&
                worldPos.y >= minY && worldPos.y < maxY;
     }
@@ -35,10 +32,10 @@ public class MapBoundary : MonoBehaviour, IPlayerMapBoundary
     public Rect GetCameraMovableRect()
     {
         return new Rect(
-            mapBounds.min.x,
-            mapBounds.min.y,
-            mapBounds.size.x,
-            mapBounds.size.y
+            mapBounds.min.x + mapOuterPadding,
+            mapBounds.min.y + mapOuterPadding,
+            mapBounds.size.x - (mapOuterPadding * 2),
+            mapBounds.size.y - (mapOuterPadding * 2)
         );
     }
 }

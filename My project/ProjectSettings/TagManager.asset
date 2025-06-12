@@ -50,5 +50,8 @@ TagManager:
   - name: treasure_sd_character
     uniqueID: 4036392821
     locked: 0
+  - name: maptip_mask
+    uniqueID: 1670445227
+    locked: 0
   m_RenderingLayers:
   - Default
