@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class MapBoundary : MonoBehaviour, IPlayerMapBoundary
+public class MapBoundary : MonoBehaviour
 {
     [SerializeField] SpriteRenderer mapSpriteRenderer;
     [SerializeField] float cellSize = 1f;

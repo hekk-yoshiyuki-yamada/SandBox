@@ -19,7 +19,6 @@ public class MapMaskManager : MonoBehaviour
 
     void Start()
     {
-        // MapBoundaryからBounds取得
         var bounds = mapBoundary.MapBounds;
         mapMin = new Vector2Int(
             Mathf.RoundToInt((bounds.min.x + 1) / cellSize),
@@ -30,7 +29,7 @@ public class MapMaskManager : MonoBehaviour
             Mathf.RoundToInt((bounds.max.y - 1) / cellSize) - 1
         );
 
-        // マップ全体にマスクを配置
+        // 未踏破マス設置
         for (var x = mapMin.x; x <= mapMax.x; x++)
         {
             for (var y = mapMin.y; y <= mapMax.y; y++)

@@ -20,19 +20,12 @@ public class CameraFitterView : MonoBehaviour
         var targetOrthoSize = verticalTileCount / 2f + margin;
         targetCamera.orthographicSize = targetOrthoSize;
 
-        presenter = new CameraFitterPresenter(this, targetCamera, mapBoundary, margin, playerView);
+        presenter = new CameraFitterPresenter(this, targetCamera, mapBoundary, playerView);
     }
 
     void LateUpdate()
     {
         presenter.FollowPlayer();
-    }
-
-    // View用API
-    public void SetCameraSizeAndPosition(float size, Vector3 position)
-    {
-        targetCamera.orthographicSize = size;
-        targetCamera.transform.position = position;
     }
 
     public void SetCameraPosition(Vector3 position)

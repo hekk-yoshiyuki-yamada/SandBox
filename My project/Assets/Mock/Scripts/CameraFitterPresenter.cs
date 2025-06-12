@@ -5,15 +5,13 @@ public class CameraFitterPresenter
     private CameraFitterView view;
     private Camera camera;
     private MapBoundary mapBoundary;
-    private float margin;
     private PlayerView playerView;
 
-    public CameraFitterPresenter(CameraFitterView view, Camera camera, MapBoundary mapBoundary, float margin, PlayerView playerView)
+    public CameraFitterPresenter(CameraFitterView view, Camera camera, MapBoundary mapBoundary, PlayerView playerView)
     {
         this.view = view;
         this.camera = camera;
         this.mapBoundary = mapBoundary;
-        this.margin = margin;
         this.playerView = playerView;
     }
 
