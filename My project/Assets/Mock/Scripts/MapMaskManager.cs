@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -13,6 +14,8 @@ public class MapMaskManager : MonoBehaviour
     private Vector2Int mapMax;
     private Dictionary<Vector2Int, GameObject> maskDict = new();
     public HashSet<Vector2Int> ClearMaskIds = new();
+
+    public event Action OnMaskChanged;
 
     void Start()
     {
@@ -37,6 +40,7 @@ public class MapMaskManager : MonoBehaviour
                 maskDict[pos] = mask;
             }
         }
+        OnMaskChanged?.Invoke();
     }
 
     public void UpdateMaskVisibility(Vector2Int playerPos)

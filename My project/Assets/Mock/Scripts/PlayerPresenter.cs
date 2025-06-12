@@ -14,7 +14,7 @@ public class PlayerPresenter
         this.mapBoundary = mapBoundary;
         this.mapMaskManager = mapMaskManager;
         view.SetPosition(position);
-        mapMaskManager?.UpdateMaskVisibility(position); // 起動直後に実行
+        this.mapMaskManager.OnMaskChanged += () => this.mapMaskManager.UpdateMaskVisibility(position);
     }
 
     public void Move(Vector2Int dir)
@@ -24,7 +24,9 @@ public class PlayerPresenter
         {
             position = next;
             view.SetPosition(position);
-            mapMaskManager?.UpdateMaskVisibility(position); // 移動後に実行
+            if (dir.x != 0)
+                view.SetFlip(dir.x > 0);
+            mapMaskManager?.UpdateMaskVisibility(position);
         }
     }
 }
