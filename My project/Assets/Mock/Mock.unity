@@ -136,7 +136,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8b8c81ec59104a2c93e41eb75bc66c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startGridPos: {x: 1, y: 1}
+  startGridPos: {x: 2, y: 2}
   mapBoundary: {fileID: 553878629}
   mapMaskManager: {fileID: 553878631}
   spriteRenderer: {fileID: 1313520347}
@@ -159,6 +159,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mapSpriteRenderer: {fileID: 1871004279}
   cellSize: 1
+  mapOuterPadding: 1
 --- !u!114 &553878631
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -202,6 +203,7 @@ MonoBehaviour:
   mapBoundary: {fileID: 553878629}
   margin: 0.5
   playerView: {fileID: 523461512}
+  verticalTileCount: 6
 --- !u!20 &1516248328 stripped
 Camera:
   m_CorrespondingSourceObject: {fileID: 2466248990846290930, guid: cb0cccc53300f447692a8b05ca06f2b5, type: 3}
