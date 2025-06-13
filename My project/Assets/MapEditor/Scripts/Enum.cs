@@ -45,6 +45,9 @@ namespace MapEditor
         HINT = 8,
     }
 
+    /// <summary>
+    /// 列挙型拡張メソッド
+    /// </summary>
     public static class EnumExtensions
     {
         static Dictionary<string, FieldTileType> FieldTileTypeMap = new()
@@ -67,6 +70,9 @@ namespace MapEditor
             { "hint", GimmickTileType.HINT }
         };
 
+        /// <summary>
+        /// TilemapからFieldTileType取得
+        /// </summary>
         public static FieldTileType GetFieldTileType(this Tilemap value, Vector3Int pos)
         {
             if (value == null || !value.HasTile(pos))
@@ -82,6 +88,9 @@ namespace MapEditor
             return FieldTileTypeMap.GetValueOrDefault(texName, FieldTileType.NONE);
         }
 
+        /// <summary>
+        /// TilemapからGimmickTileType取得
+        /// </summary>
         public static GimmickTileType GetGimmickTileType(this Tilemap value, Vector3Int pos)
         {
             if (value == null || !value.HasTile(pos))
@@ -97,6 +106,9 @@ namespace MapEditor
             return GimmickTileTypeMap.GetValueOrDefault(texName, GimmickTileType.NONE);
         }
 
+        /// <summary>
+        /// FieldTileTypeのデフォルト移動可否
+        /// </summary>
         public static bool GetDefaultIsMovable(this FieldTileType value)
         {
             return value switch
