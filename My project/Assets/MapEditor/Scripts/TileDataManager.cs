@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace MapEditor
 {
@@ -13,7 +14,7 @@ namespace MapEditor
         public int groupId;
         public FieldTileType fieldTileType;
         public GimmickTileType gimmickTileType;
-        public int gimmickTileTypeValue = 0;
+        public int gimmickTileMasterId = 0;
         public bool isMovable = true;
         public Vector3Int position;
     }

@@ -5,27 +5,6 @@ using UnityEngine.Tilemaps;
 namespace MapEditor
 {
     /// <summary>
-    /// ギミックマスの種類を定義する列挙型
-    /// </summary>
-    public enum GimmickTileType
-    {
-        /// <summary>空きマス</summary>
-        NONE = 0,
-
-        /// <summary>イベントマス</summary>
-        EVENT = 1,
-
-        /// <summary>障害物マス</summary>
-        OBSTACLE = 2,
-
-        /// <summary>開始マス</summary>
-        START = 3,
-
-        /// <summary>ゴールマス</summary>
-        GOAL = 4,
-    }
-
-    /// <summary>
     /// 地形マスの種類を定義する列挙型
     /// </summary>
     public enum FieldTileType
@@ -43,6 +22,29 @@ namespace MapEditor
         STEP = 3
     }
 
+    /// <summary>
+    /// ギミックマスの種類を定義する列挙型
+    /// </summary>
+    public enum GimmickTileType
+    {
+        /// <summary>空きマス</summary>
+        NONE = 0,
+        /// <summary>障害物マス</summary>
+        OBSTACLE = 2,
+        /// <summary>開始マス</summary>
+        START = 3,
+        /// <summary>ゴールマス</summary>
+        GOAL = 4,
+        /// <summary>アイテムマス</summary>
+        ITEM = 5,
+        /// <summary>キャラクターマス</summary>
+        CHARACTER = 6,
+        /// <summary>謎解きマス</summary>
+        RIDDLE = 7,
+        /// <summary>謎解き（回答なし）</summary>
+        HINT = 8,
+    }
+
     public static class EnumExtensions
     {
         static Dictionary<string, FieldTileType> FieldTileTypeMap = new()
@@ -56,10 +58,13 @@ namespace MapEditor
         static Dictionary<string, GimmickTileType> GimmickTileTypeMap = new()
         {
             { "none", GimmickTileType.NONE },
-            { "event", GimmickTileType.EVENT },
             { "obstacle", GimmickTileType.OBSTACLE },
             { "start", GimmickTileType.START },
             { "goal", GimmickTileType.GOAL },
+            { "item", GimmickTileType.ITEM },
+            { "character", GimmickTileType.CHARACTER },
+            { "riddle", GimmickTileType.RIDDLE },
+            { "hint", GimmickTileType.HINT }
         };
 
         public static FieldTileType GetFieldTileType(this Tilemap value, Vector3Int pos)

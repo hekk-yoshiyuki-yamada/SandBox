@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: c53c6b7c8cb964bfab32fcb18f78448a
+guid: a7db58be6e41f454e89b274c08f26e9e
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -6327332987835646064
-    second: event_0
+      213: -2686420614943779408
+    second: riddle_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -53,7 +53,7 @@ TextureImporter:
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 64
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
-  spriteGenerateFallbackPhysicsShape: 0
+  spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 1
   spriteTessellationDetail: -1
@@ -126,7 +126,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: event_0
+      name: riddle_0
       rect:
         serializedVersion: 2
         x: 0
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 09ff174db2cc038a0800000000000000
-      internalID: -6327332987835646064
+      spriteID: 0b55df81faae7bad0800000000000000
+      internalID: -2686420614943779408
       vertices: []
       indices: 
       edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      event_0: -6327332987835646064
+      riddle_0: -2686420614943779408
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

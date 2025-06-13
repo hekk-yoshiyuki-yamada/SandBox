@@ -109,7 +109,6 @@ namespace MapEditor
             LoadOrCreateTileDataManager();
             LoadTilemapsFromScene();
             SyncTileDataWithScene();
-            InitializeStyles();
         }
 
         private void LoadOrCreateTileDataManager()
@@ -197,6 +196,7 @@ namespace MapEditor
                 focusTileFromSceneView = false;
             }
             mainScrollPosition = EditorGUILayout.BeginScrollView(mainScrollPosition);
+            InitializeStyles();
             DrawBasicSettings();
             EditorGUILayout.Space(10);
             DrawSceneControls();
@@ -209,29 +209,38 @@ namespace MapEditor
 
         private void InitializeStyles()
         {
-            sectionStyle = new GUIStyle(EditorStyles.helpBox);
-            sectionStyle.margin = new RectOffset(5, 5, 5, 5);
-            sectionStyle.padding = new RectOffset(10, 10, 10, 10);
-
-            sectionStyles = new GUIStyle[4];
-            sectionStyles[0] = new GUIStyle(sectionStyle);
-            sectionStyles[0].normal.background = CreateColorTexture(new Color(0.8f, 0.9f, 1f, 0.5f));
-            sectionStyles[1] = new GUIStyle(sectionStyle);
-            sectionStyles[1].normal.background = CreateColorTexture(new Color(0.9f, 1f, 0.8f, 0.5f));
-            sectionStyles[2] = new GUIStyle(sectionStyle);
-            sectionStyles[2].normal.background = CreateColorTexture(new Color(1f, 0.9f, 0.8f, 0.5f));
-            sectionStyles[3] = new GUIStyle(sectionStyle);
-            sectionStyles[3].normal.background = CreateColorTexture(new Color(1f, 0.8f, 0.9f, 0.5f));
-
-            normalTileStyle = new GUIStyle(EditorStyles.label);
-            normalTileStyle.alignment = TextAnchor.MiddleLeft;
-            normalTileStyle.fontSize = 13;
-            normalTileStyle.fixedHeight = 32;
-            normalTileStyle.padding = new RectOffset(8, 8, 0, 0);
-
-            selectedTileStyle = new GUIStyle(normalTileStyle);
-            selectedTileStyle.normal.background = CreateColorTexture(new Color(0.3f, 0.5f, 1f, 0.7f));
-            selectedTileStyle.normal.textColor = Color.white;
+            if (sectionStyle == null)
+            {
+                sectionStyle = new GUIStyle(EditorStyles.helpBox);
+                sectionStyle.margin = new RectOffset(5, 5, 5, 5);
+                sectionStyle.padding = new RectOffset(10, 10, 10, 10);
+            }
+            if(sectionStyles == null)
+            {
+                sectionStyles = new GUIStyle[4];
+                sectionStyles[0] = new GUIStyle(sectionStyle);
+                sectionStyles[0].normal.background = CreateColorTexture(new Color(0.8f, 0.9f, 1f, 0.5f));
+                sectionStyles[1] = new GUIStyle(sectionStyle);
+                sectionStyles[1].normal.background = CreateColorTexture(new Color(0.9f, 1f, 0.8f, 0.5f));
+                sectionStyles[2] = new GUIStyle(sectionStyle);
+                sectionStyles[2].normal.background = CreateColorTexture(new Color(1f, 0.9f, 0.8f, 0.5f));
+                sectionStyles[3] = new GUIStyle(sectionStyle);
+                sectionStyles[3].normal.background = CreateColorTexture(new Color(1f, 0.8f, 0.9f, 0.5f));
+            }
+            if(normalTileStyle == null)
+            {
+                normalTileStyle = new GUIStyle(EditorStyles.label);
+                normalTileStyle.alignment = TextAnchor.MiddleLeft;
+                normalTileStyle.fontSize = 13;
+                normalTileStyle.fixedHeight = 32;
+                normalTileStyle.padding = new RectOffset(8, 8, 0, 0);
+            }
+            if(selectedTileStyle == null || selectedTileStyle.normal.background == null)
+            {
+                selectedTileStyle = new GUIStyle(normalTileStyle);
+                selectedTileStyle.normal.background = CreateColorTexture(new Color(0.3f, 0.5f, 1f, 0.7f));
+                selectedTileStyle.normal.textColor = Color.white;
+            }
         }
 
         private Texture2D CreateColorTexture(Color color)
@@ -425,7 +434,7 @@ namespace MapEditor
                     (GimmickTileType)EditorGUILayout.EnumPopup("Gimmick Tile", selectedTileData.gimmickTileType);
                 EditorGUI.EndDisabledGroup();
                 EditorGUI.BeginDisabledGroup(selectedTileData.gimmickTileType == GimmickTileType.NONE);
-                selectedTileData.gimmickTileTypeValue = EditorGUILayout.IntField(new GUIContent("GimmickValue", "イベントマスに対応した値を指定してください。\n EVENT: summer2025_hunt_event.id"), selectedTileData.gimmickTileTypeValue);
+                selectedTileData.gimmickTileMasterId = EditorGUILayout.IntField(new GUIContent("マスターID", "イベントマスに対応した値を指定してください。\nITEM: summer2025_hunt_item_bonuses.id\nCHARACTER: summer2025_hunt_character.id\nRIDDLE: summer2025_hunt_riddle.id\nHINT: summer2025_hunt_hint.id"), selectedTileData.gimmickTileMasterId);
                 EditorGUI.EndDisabledGroup();
                 selectedTileData.isMovable = EditorGUILayout.Toggle(new GUIContent("移動可能か","キャラクターが通行可能かどうか（FieldTileに対しての設定）"), selectedTileData.isMovable);
                 EditorGUILayout.LabelField("位置", selectedTileData.position.ToString());
@@ -433,6 +442,7 @@ namespace MapEditor
                 if (EditorGUI.EndChangeCheck())
                 {
                     EditorUtility.SetDirty(tileDataManager);
+                    GUI.FocusControl(null);
                 }
 
                 if (GUILayout.Button("選択解除"))
@@ -586,7 +596,7 @@ namespace MapEditor
                 {
                     var data = tileDataManager.tilesData[i];
                     var line =
-                        $"        {{id: {data.id}, group_id: {data.groupId}, field_tile_type_id: {(int)data.fieldTileType}, gimmick_tile_type_id: {(int)data.gimmickTileType}, gimmick_tile_type_value: {data.gimmickTileTypeValue}, is_movable: {(data.isMovable ? 1 : 0)}, position_x: {data.position.x}, position_y: {data.position.y}}}";
+                        $"        {{id: {data.id}, group_id: {data.groupId}, field_tile_type_id: {(int)data.fieldTileType}, gimmick_tile_type_id: {(int)data.gimmickTileType}, gimmick_tile_type_value: {data.gimmickTileMasterId}, is_movable: {(data.isMovable ? 1 : 0)}, position_x: {data.position.x}, position_y: {data.position.y}}}";
                     if (i < tileDataManager.tilesData.Count - 1)
                         line += ",";
                     sb.AppendLine(line);
