@@ -91,5 +91,17 @@ namespace MapEditor
             var texName = tile.sprite.texture.name.ToLower();
             return GimmickTileTypeMap.GetValueOrDefault(texName, GimmickTileType.NONE);
         }
+
+        public static bool GetDefaultIsMovable(this FieldTileType value)
+        {
+            return value switch
+            {
+                FieldTileType.NONE => true,
+                FieldTileType.ROAD => true,
+                FieldTileType.WATER => false,
+                FieldTileType.STEP => false,
+                _ => true
+            };
+        }
     }
 }

@@ -12,10 +12,10 @@ namespace MapEditor
 {
     public class TileMapEditor : EditorWindow
     {
-        const string exportPathPrefix = "Assets/MapEditor";
+        const string exportPathPrefix = "Assets/MapEditor/Migration";
         const string sceneDir = exportPathPrefix + "/Scene";
         const string templateScenePath = sceneDir + "/MapEditorTemplate.unity";
-        const string tileDataManagerPath = "Assets/MapEditor/TileDataManager.asset";
+        private string TileDataManagerPath => $"Assets/MapEditor/Resources/TileDataManager_{SceneManager.GetActiveScene().name}.asset";
 
         // Scene関連のフィールド
         private Camera sceneCamera;
@@ -35,8 +35,13 @@ namespace MapEditor
         private GUIStyle[] sectionStyles;
         private GUIStyle selectedTileStyle;
         private GUIStyle normalTileStyle;
-        private string tileFilter = "";
+
+        private enum FilterType { All, FieldTileType, GimmickTileType }
+        private FilterType filterType = FilterType.All;
+        private FieldTileType filterFieldType = FieldTileType.NONE;
+        private GimmickTileType filterGimmickType = GimmickTileType.NONE;
         private enum SortType { ID, X, Y, FieldTileType, GimmickTileType }
+
         private bool isPlaceMode = false;
         private SortType sortType = SortType.ID;
         private bool sortAsc = true;
@@ -56,14 +61,19 @@ namespace MapEditor
         private void OnEnable()
         {
             SceneView.duringSceneGui += OnSceneGUI;
-            LoadOrCreateTileDataManager();
-            LoadTilemapsFromScene();
-            SyncTileDataWithScene();
+            EditorSceneManager.activeSceneChangedInEditMode += OnSceneChanged;
+            Initialize();
         }
 
         private void OnDisable()
         {
             SceneView.duringSceneGui -= OnSceneGUI;
+            EditorSceneManager.activeSceneChangedInEditMode -= OnSceneChanged;
+        }
+
+        private void OnSceneChanged(Scene oldScene, Scene newScene)
+        {
+            Initialize();
         }
 
         private void OnFocus()
@@ -83,13 +93,32 @@ namespace MapEditor
             SyncTileDataWithScene();
         }
 
+        private void Initialize()
+        {
+            if(SceneManager.GetActiveScene().name.Contains("MapEditorTemplate"))
+            {
+                EditorUtility.DisplayDialog("エラー", "テンプレートシーンでは編集できません。実際のマップシーンを開いてください。", "OK");
+                return;
+            }
+            if (!SceneManager.GetActiveScene().name.Contains("tilemap"))
+            {
+                EditorUtility.DisplayDialog("エラー", "このエディタはtilemapシーンでのみ使用できます。", "OK");
+                return;
+            }
+
+            LoadOrCreateTileDataManager();
+            LoadTilemapsFromScene();
+            SyncTileDataWithScene();
+            InitializeStyles();
+        }
+
         private void LoadOrCreateTileDataManager()
         {
-            tileDataManager = AssetDatabase.LoadAssetAtPath<TileDataManager>(tileDataManagerPath);
+            tileDataManager = AssetDatabase.LoadAssetAtPath<TileDataManager>(TileDataManagerPath);
             if (tileDataManager == null)
             {
                 tileDataManager = ScriptableObject.CreateInstance<TileDataManager>();
-                AssetDatabase.CreateAsset(tileDataManager, tileDataManagerPath);
+                AssetDatabase.CreateAsset(tileDataManager, TileDataManagerPath);
                 AssetDatabase.SaveAssets();
             }
         }
@@ -131,13 +160,15 @@ namespace MapEditor
             {
                 if (!tileDataManager.tilesData.Any(d => d.position == pos))
                 {
+                    var fieldType = currentFieldTilemap.GetFieldTileType(pos);
                     var newData = new TileData
                     {
                         id = tileDataManager.tilesData.Count > 0 ? tileDataManager.tilesData.Max(d => d.id) + 1 : 1,
                         groupId = int.Parse(groupId),
                         position = pos,
-                        fieldTileType = currentFieldTilemap.GetFieldTileType(pos),
+                        fieldTileType = fieldType,
                         gimmickTileType = currentGimmickTilemap.GetGimmickTileType(pos),
+                        isMovable = fieldType.GetDefaultIsMovable()
                     };
                     tileDataManager.tilesData.Add(newData);
                     EditorUtility.SetDirty(tileDataManager);
@@ -166,7 +197,6 @@ namespace MapEditor
                 focusTileFromSceneView = false;
             }
             mainScrollPosition = EditorGUILayout.BeginScrollView(mainScrollPosition);
-            InitializeStyles();
             DrawBasicSettings();
             EditorGUILayout.Space(10);
             DrawSceneControls();
@@ -179,40 +209,29 @@ namespace MapEditor
 
         private void InitializeStyles()
         {
-            if (sectionStyle == null)
-            {
-                sectionStyle = new GUIStyle(EditorStyles.helpBox);
-                sectionStyle.margin = new RectOffset(5, 5, 5, 5);
-                sectionStyle.padding = new RectOffset(10, 10, 10, 10);
-            }
+            sectionStyle = new GUIStyle(EditorStyles.helpBox);
+            sectionStyle.margin = new RectOffset(5, 5, 5, 5);
+            sectionStyle.padding = new RectOffset(10, 10, 10, 10);
 
-            if (sectionStyles == null || sectionStyles.Length == 0)
-            {
-                sectionStyles = new GUIStyle[4];
-                sectionStyles[0] = new GUIStyle(sectionStyle);
-                sectionStyles[0].normal.background = CreateColorTexture(new Color(0.8f, 0.9f, 1f, 0.5f));
-                sectionStyles[1] = new GUIStyle(sectionStyle);
-                sectionStyles[1].normal.background = CreateColorTexture(new Color(0.9f, 1f, 0.8f, 0.5f));
-                sectionStyles[2] = new GUIStyle(sectionStyle);
-                sectionStyles[2].normal.background = CreateColorTexture(new Color(1f, 0.9f, 0.8f, 0.5f));
-                sectionStyles[3] = new GUIStyle(sectionStyle);
-                sectionStyles[3].normal.background = CreateColorTexture(new Color(1f, 0.8f, 0.9f, 0.5f));
-            }
+            sectionStyles = new GUIStyle[4];
+            sectionStyles[0] = new GUIStyle(sectionStyle);
+            sectionStyles[0].normal.background = CreateColorTexture(new Color(0.8f, 0.9f, 1f, 0.5f));
+            sectionStyles[1] = new GUIStyle(sectionStyle);
+            sectionStyles[1].normal.background = CreateColorTexture(new Color(0.9f, 1f, 0.8f, 0.5f));
+            sectionStyles[2] = new GUIStyle(sectionStyle);
+            sectionStyles[2].normal.background = CreateColorTexture(new Color(1f, 0.9f, 0.8f, 0.5f));
+            sectionStyles[3] = new GUIStyle(sectionStyle);
+            sectionStyles[3].normal.background = CreateColorTexture(new Color(1f, 0.8f, 0.9f, 0.5f));
 
-            if (normalTileStyle == null)
-            {
-                normalTileStyle = new GUIStyle(EditorStyles.label);
-                normalTileStyle.alignment = TextAnchor.MiddleLeft;
-                normalTileStyle.fontSize = 13;
-                normalTileStyle.fixedHeight = 32;
-                normalTileStyle.padding = new RectOffset(8, 8, 0, 0);
-            }
-            if (selectedTileStyle == null)
-            {
-                selectedTileStyle = new GUIStyle(normalTileStyle);
-                selectedTileStyle.normal.background = CreateColorTexture(new Color(0.3f, 0.5f, 1f, 0.7f));
-                selectedTileStyle.normal.textColor = Color.white;
-            }
+            normalTileStyle = new GUIStyle(EditorStyles.label);
+            normalTileStyle.alignment = TextAnchor.MiddleLeft;
+            normalTileStyle.fontSize = 13;
+            normalTileStyle.fixedHeight = 32;
+            normalTileStyle.padding = new RectOffset(8, 8, 0, 0);
+
+            selectedTileStyle = new GUIStyle(normalTileStyle);
+            selectedTileStyle.normal.background = CreateColorTexture(new Color(0.3f, 0.5f, 1f, 0.7f));
+            selectedTileStyle.normal.textColor = Color.white;
         }
 
         private Texture2D CreateColorTexture(Color color)
@@ -228,14 +247,16 @@ namespace MapEditor
             GUILayout.Label(new GUIContent("基本設定", "エディタの基本設定を行います"),EditorStyles.boldLabel);
             GUILayout.Label("このエディタは、タイルマップの編集とsummer2025_hunt_tileマスタのエクスポートを行うためのツールです。", EditorStyles.wordWrappedLabel);
             EditorGUILayout.BeginHorizontal();
-            var placeModeLabel = isPlaceMode ? "配置モード" : "選択モード";
-            isPlaceMode = GUILayout.Toggle(
-                isPlaceMode,
-                new GUIContent(placeModeLabel, "配置モードではUnity標準のTilemapツールでタイルを配置できます。選択モードではタイル情報の編集ができます。"),
-                "Button",
-                GUILayout.Width(120)
-            );
+            var selectModeStyle = new GUIStyle(GUI.skin.button);
+            var placeModeStyle = new GUIStyle(GUI.skin.button);
+            if (isPlaceMode) selectModeStyle.normal.background = CreateColorTexture(Color.yellow);
+            else placeModeStyle.normal.background = CreateColorTexture(Color.yellow);
+            if (GUILayout.Button("選択モード", selectModeStyle, GUILayout.Width(100)))
+                isPlaceMode = false;
+            if (GUILayout.Button("配置モード", placeModeStyle, GUILayout.Width(100)))
+                isPlaceMode = true;
             EditorGUILayout.EndHorizontal();
+            GUILayout.Label("配置モードではUnity標準のTilemapツールでタイルを配置できます。選択モードではタイル情報の編集ができます。", EditorStyles.wordWrappedLabel);
 
             groupId = EditorGUILayout.TextField("Group ID", groupId);
             GUILayout.Space(5);
@@ -273,10 +294,20 @@ namespace MapEditor
         {
             //  絞り込み・ソート
             EditorGUILayout.BeginHorizontal();
-            tileFilter = EditorGUILayout.TextField("絞り込み(名前/座標)", tileFilter);
+            filterType = (FilterType)EditorGUILayout.EnumPopup("フィルタ種別", filterType);
+            switch (filterType)
+            {
+                case FilterType.FieldTileType:
+                    filterFieldType = (FieldTileType)EditorGUILayout.EnumPopup("FieldType", filterFieldType);
+                    break;
+                case FilterType.GimmickTileType:
+                    filterGimmickType = (GimmickTileType)EditorGUILayout.EnumPopup("GimmickType", filterGimmickType);
+                    break;
+            }
             sortType = (SortType)EditorGUILayout.EnumPopup("ソート", sortType);
             sortAsc = GUILayout.Toggle(sortAsc, sortAsc ? "昇順" : "降順", GUILayout.Width(60));
             EditorGUILayout.EndHorizontal();
+
             var list = SortFilter();
 
             scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition, GUILayout.Height(400));
@@ -301,16 +332,9 @@ namespace MapEditor
 
         private void DrawTileCell(TileData tileData)
         {
-            var tileName = "";
-            if (currentFieldTilemap != null && currentFieldTilemap.HasTile(tileData.position))
-                tileName = currentFieldTilemap.GetTile(tileData.position).name;
-            else if (currentGimmickTilemap != null && currentGimmickTilemap.HasTile(tileData.position))
-                tileName = currentGimmickTilemap.GetTile(tileData.position).name;
-
+            var tileName = $"[{tileData.id}]{tileData.fieldTileType}_{tileData.gimmickTileType}";
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
-
-
-            var isSelected = selectedTileData == tileData;
+            var isSelected = tileData == selectedTileData;
             var style = isSelected ? selectedTileStyle : normalTileStyle;
             if (GUILayout.Button($"{tileName} ({tileData.position.x}, {tileData.position.y})", style, GUILayout.Height(32)))
             {
@@ -387,17 +411,19 @@ namespace MapEditor
             EditorGUILayout.Space(5);
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            EditorGUILayout.LabelField($"選択中のタイル: [{selectedTileData.id}][{selectedTileData.gimmickTileType}][{selectedTileData.fieldTileType}][{selectedTileData.position.x}", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField($"選択中のタイル: [{selectedTileData.id}][{selectedTileData.gimmickTileType}][{selectedTileData.fieldTileType}][{selectedTileData.position.x},{selectedTileData.position.y}]", EditorStyles.boldLabel);
 
             if (selectedTileData != null)
             {
                 EditorGUI.BeginChangeCheck();
                 EditorGUILayout.LabelField("ID", selectedTileData.id.ToString());
+                EditorGUI.BeginDisabledGroup(true);
                 selectedTileData.groupId = int.Parse(groupId);
                 selectedTileData.fieldTileType =
                     (FieldTileType)EditorGUILayout.EnumPopup("Field Tile", selectedTileData.fieldTileType);
                 selectedTileData.gimmickTileType =
                     (GimmickTileType)EditorGUILayout.EnumPopup("Gimmick Tile", selectedTileData.gimmickTileType);
+                EditorGUI.EndDisabledGroup();
                 EditorGUI.BeginDisabledGroup(selectedTileData.gimmickTileType == GimmickTileType.NONE);
                 selectedTileData.gimmickTileTypeValue = EditorGUILayout.IntField(new GUIContent("GimmickValue", "イベントマスに対応した値を指定してください。\n EVENT: summer2025_hunt_event.id"), selectedTileData.gimmickTileTypeValue);
                 EditorGUI.EndDisabledGroup();
@@ -649,37 +675,31 @@ namespace MapEditor
 
         private List<TileData> SortFilter()
         {
-            List<TileData> list = tileDataManager.tilesData;
-            if (!string.IsNullOrEmpty(tileFilter))
+            IEnumerable<TileData> list = tileDataManager.tilesData;
+
+            switch (filterType)
             {
-                list = list.Where(d =>
-                {
-                    var name = "";
-                    if (currentFieldTilemap != null && currentFieldTilemap.HasTile(d.position))
-                    {
-                        name = currentFieldTilemap.GetTile(d.position).name;
-                    }
-                    else if (currentGimmickTilemap != null && currentGimmickTilemap.HasTile(d.position))
-                    {
-                        name = currentGimmickTilemap.GetTile(d.position).name;
-                    }
-                    return name.Contains(tileFilter) ||
-                           d.position.x.ToString().Contains(tileFilter) ||
-                           d.position.y.ToString().Contains(tileFilter);
-                }).ToList();
+                case FilterType.FieldTileType:
+                    if (filterFieldType != FieldTileType.NONE)
+                        list = list.Where(d => d.fieldTileType == filterFieldType);
+                    break;
+                case FilterType.GimmickTileType:
+                    if (filterGimmickType != GimmickTileType.NONE)
+                        list = list.Where(d => d.gimmickTileType == filterGimmickType);
+                    break;
             }
 
-            return sortType switch
+            list = sortType switch
             {
-                SortType.ID => sortAsc ? list.OrderBy(d => d.id).ToList() : list.OrderByDescending(d => d.id).ToList(),
-                SortType.X => sortAsc
-                    ? list.OrderBy(d => d.position.x).ToList()
-                    : list.OrderByDescending(d => d.position.x).ToList(),
-                SortType.Y => sortAsc
-                    ? list.OrderBy(d => d.position.y).ToList()
-                    : list.OrderByDescending(d => d.position.y).ToList(),
+                SortType.ID => sortAsc ? list.OrderBy(d => d.id) : list.OrderByDescending(d => d.id),
+                SortType.X => sortAsc ? list.OrderBy(d => d.position.x) : list.OrderByDescending(d => d.position.x),
+                SortType.Y => sortAsc ? list.OrderBy(d => d.position.y) : list.OrderByDescending(d => d.position.y),
+                SortType.FieldTileType => sortAsc ? list.OrderBy(d => d.fieldTileType) : list.OrderByDescending(d => d.fieldTileType),
+                SortType.GimmickTileType => sortAsc ? list.OrderBy(d => d.gimmickTileType) : list.OrderByDescending(d => d.gimmickTileType),
                 _ => list
             };
+
+            return list.ToList();
         }
     }
 }
