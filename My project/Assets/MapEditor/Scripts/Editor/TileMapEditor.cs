@@ -35,6 +35,7 @@ namespace MapEditor
         private GUIStyle[] sectionStyles;
         private GUIStyle selectedTileStyle;
         private GUIStyle normalTileStyle;
+        private string warningMessage = null;
 
         private enum FilterType { All, FieldTileType, GimmickTileType }
         private FilterType filterType = FilterType.All;
@@ -95,14 +96,16 @@ namespace MapEditor
 
         private void Initialize()
         {
-            if(SceneManager.GetActiveScene().name.Contains("MapEditorTemplate"))
+            warningMessage = null;
+            var sceneName = SceneManager.GetActiveScene().name;
+            if (sceneName.Contains("MapEditorTemplate"))
             {
-                EditorUtility.DisplayDialog("エラー", "テンプレートシーンでは編集できません。実際のマップシーンを開いてください。", "OK");
+                warningMessage = "テンプレートシーンでは編集できません。実際のマップシーンを開いてください。";
                 return;
             }
-            if (!SceneManager.GetActiveScene().name.Contains("tilemap"))
+            if (!sceneName.Contains("tilemap"))
             {
-                EditorUtility.DisplayDialog("エラー", "このエディタはtilemapシーンでのみ使用できます。", "OK");
+                warningMessage = "このエディタはtilemapシーンでのみ使用できます。";
                 return;
             }
 
@@ -180,6 +183,12 @@ namespace MapEditor
 
         private void OnGUI()
         {
+            if (!string.IsNullOrEmpty(warningMessage))
+            {
+                EditorGUILayout.HelpBox(warningMessage, MessageType.Error);
+                return;
+            }
+
             // SceneViewから選択された直後のみフォーカス
             if (focusTileFromSceneView && Event.current.type == EventType.Layout)
             {
