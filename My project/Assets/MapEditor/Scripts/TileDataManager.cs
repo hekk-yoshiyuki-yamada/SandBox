@@ -1,0 +1,27 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Serialization;
+
+namespace MapEditor
+{
+    /// <summary>
+    /// タイルデータの定義(summer2025_hunt_tile)
+    /// </summary>
+    [System.Serializable]
+    public class TileData
+    {
+        public int id;
+        public int groupId;
+        public FieldTileType fieldTileType;
+        public GimmickTileType gimmickTileType;
+        public int gimmickTileMasterId = 0;
+        public bool isMovable = true;
+        public Vector3Int position;
+    }
+
+    [CreateAssetMenu(fileName = "TileDataManager", menuName = "TileMap/TileDataManager", order = 2)]
+    public class TileDataManager : ScriptableObject
+    {
+        public List<TileData> tilesData = new();
+    }
+}
