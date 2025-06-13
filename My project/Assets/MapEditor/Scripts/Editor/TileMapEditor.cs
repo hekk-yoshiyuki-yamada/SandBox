@@ -13,7 +13,7 @@ namespace MapEditor
     public class TileMapEditor : EditorWindow
     {
         const string exportPathPrefix = "Assets/MapEditor/Migration";
-        const string sceneDir = exportPathPrefix + "/Scene";
+        const string sceneDir = "Assets/MapEditor/Scene";
         const string templateScenePath = sceneDir + "/MapEditorTemplate.unity";
         private string TileDataManagerPath => $"Assets/MapEditor/Resources/TileDataManager_{SceneManager.GetActiveScene().name}.asset";
 
