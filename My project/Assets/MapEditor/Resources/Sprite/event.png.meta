@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 1b3908a5c159a40cf890808d6b8b405c
+guid: c53c6b7c8cb964bfab32fcb18f78448a
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 5725184139431673129
-    second: stone_0
+      213: -6327332987835646064
+    second: event_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -72,7 +72,7 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 256
+    maxTextureSize: 128
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: 1
@@ -126,7 +126,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: stone_0
+      name: event_0
       rect:
         serializedVersion: 2
         x: 0
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 92d768834a0f37f40800000000000000
-      internalID: 5725184139431673129
+      spriteID: 09ff174db2cc038a0800000000000000
+      internalID: -6327332987835646064
       vertices: []
       indices: 
       edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      stone_0: 5725184139431673129
+      event_0: -6327332987835646064
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

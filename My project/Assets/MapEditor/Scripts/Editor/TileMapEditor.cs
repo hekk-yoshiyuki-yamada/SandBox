@@ -37,6 +37,7 @@ namespace MapEditor
         private GUIStyle normalTileStyle;
         private string tileFilter = "";
         private enum SortType { ID, X, Y, FieldTileType, GimmickTileType }
+        private bool isPlaceMode = false;
         private SortType sortType = SortType.ID;
         private bool sortAsc = true;
         private Rect selectedTileRect;
@@ -135,8 +136,8 @@ namespace MapEditor
                         id = tileDataManager.tilesData.Count > 0 ? tileDataManager.tilesData.Max(d => d.id) + 1 : 1,
                         groupId = int.Parse(groupId),
                         position = pos,
-                        fieldTileType = FieldTileType.NONE,
-                        gimmickTileType = GimmickTileType.NONE,
+                        fieldTileType = currentFieldTilemap.GetFieldTileType(pos),
+                        gimmickTileType = currentGimmickTilemap.GetGimmickTileType(pos),
                     };
                     tileDataManager.tilesData.Add(newData);
                     EditorUtility.SetDirty(tileDataManager);
@@ -224,19 +225,30 @@ namespace MapEditor
 
         private void DrawBasicSettings()
         {
-            GUILayout.Label("基本設定", EditorStyles.boldLabel);
+            GUILayout.Label(new GUIContent("基本設定", "エディタの基本設定を行います"),EditorStyles.boldLabel);
+            GUILayout.Label("このエディタは、タイルマップの編集とsummer2025_hunt_tileマスタのエクスポートを行うためのツールです。", EditorStyles.wordWrappedLabel);
+            EditorGUILayout.BeginHorizontal();
+            var placeModeLabel = isPlaceMode ? "配置モード" : "選択モード";
+            isPlaceMode = GUILayout.Toggle(
+                isPlaceMode,
+                new GUIContent(placeModeLabel, "配置モードではUnity標準のTilemapツールでタイルを配置できます。選択モードではタイル情報の編集ができます。"),
+                "Button",
+                GUILayout.Width(120)
+            );
+            EditorGUILayout.EndHorizontal();
+
             groupId = EditorGUILayout.TextField("Group ID", groupId);
             GUILayout.Space(5);
             GUILayout.Label("マップ設定", EditorStyles.boldLabel);
 
             if (sceneCamera != null)
             {
-                sceneCamera.orthographicSize = EditorGUILayout.FloatField("Camera倍率変更", sceneCamera.orthographicSize);
+                sceneCamera.orthographicSize = EditorGUILayout.FloatField("Camera倍率変更(プレビュー用)", sceneCamera.orthographicSize);
             }
 
             if (backgroundSprite != null)
             {
-                backgroundSprite.size = EditorGUILayout.Vector2Field("マップサイズ(縦横想定サイズ＋２してね)", backgroundSprite.size);
+                backgroundSprite.size = EditorGUILayout.Vector2Field("マップサイズ", backgroundSprite.size);
             }
         }
 
@@ -244,12 +256,12 @@ namespace MapEditor
         {
             GUILayout.Label("シーン操作", EditorStyles.boldLabel);
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("新規作成"))
+            if (GUILayout.Button(new GUIContent("新規作成", "新しくマップを作製します。新規マップの作成を行うときに押してください")))
             {
                 CreateNewScene();
             }
 
-            if (GUILayout.Button("編集"))
+            if (GUILayout.Button(new GUIContent("編集", "すでに存在するマップを編集します。マップを選択して編集を行うときに押してください")))
             {
                 EditScene();
             }
@@ -317,10 +329,24 @@ namespace MapEditor
                 }
             }
 
-            if (GUILayout.Button("削除", GUILayout.Width(60), GUILayout.Height(32)))
+            if (GUILayout.Button(new GUIContent("削除", "このタイルデータとTilemap上のタイルを削除します"), GUILayout.Width(60), GUILayout.Height(32)))
             {
                 if (EditorUtility.DisplayDialog("確認", $"タイルデータ (ID: {tileData.id}) を削除してもよろしいですか？", "はい", "いいえ"))
                 {
+                    // Tilemap上のタイルも削除
+                    if (currentFieldTilemap != null && currentFieldTilemap.HasTile(tileData.position))
+                    {
+                        Undo.RecordObject(currentFieldTilemap, "Remove Tile");
+                        currentFieldTilemap.SetTile(tileData.position, null);
+                        EditorUtility.SetDirty(currentFieldTilemap);
+                    }
+                    if (currentGimmickTilemap != null && currentGimmickTilemap.HasTile(tileData.position))
+                    {
+                        Undo.RecordObject(currentGimmickTilemap, "Remove Tile");
+                        currentGimmickTilemap.SetTile(tileData.position, null);
+                        EditorUtility.SetDirty(currentGimmickTilemap);
+                    }
+
                     tileDataManager.tilesData.Remove(tileData);
                     if (selectedTileData == tileData)
                     {
@@ -335,7 +361,7 @@ namespace MapEditor
 
         private void DrawTileEditingSection()
         {
-            GUILayout.Label("タイル編集", EditorStyles.boldLabel);
+            GUILayout.Label(new GUIContent("タイル編集", "配置ずみのタイルにマスタ情報を設定します"), EditorStyles.boldLabel);
 
             if (currentFieldTilemap == null && currentGimmickTilemap == null)
             {
@@ -349,7 +375,8 @@ namespace MapEditor
                 SceneView.RepaintAll();
             }
 
-            if (showTileList = EditorGUILayout.Foldout(showTileList, "タイルリスト", true))
+            showTileList = EditorGUILayout.Foldout(showTileList, "タイルリスト", true);
+            if (showTileList)
             {
                 DrawTileList();
             }
@@ -365,16 +392,17 @@ namespace MapEditor
             if (selectedTileData != null)
             {
                 EditorGUI.BeginChangeCheck();
-                selectedTileData.id = EditorGUILayout.IntField("ID", selectedTileData.id);
+                EditorGUILayout.LabelField("ID", selectedTileData.id.ToString());
                 selectedTileData.groupId = int.Parse(groupId);
                 selectedTileData.fieldTileType =
                     (FieldTileType)EditorGUILayout.EnumPopup("Field Tile", selectedTileData.fieldTileType);
                 selectedTileData.gimmickTileType =
                     (GimmickTileType)EditorGUILayout.EnumPopup("Gimmick Tile", selectedTileData.gimmickTileType);
-                selectedTileData.gimmickTileTypeValue =
-                    EditorGUILayout.IntField("Gimmick値", selectedTileData.gimmickTileTypeValue);
-                selectedTileData.isMovable = EditorGUILayout.Toggle("移動可能", selectedTileData.isMovable);
-                selectedTileData.position = EditorGUILayout.Vector3IntField("位置", selectedTileData.position);
+                EditorGUI.BeginDisabledGroup(selectedTileData.gimmickTileType == GimmickTileType.NONE);
+                selectedTileData.gimmickTileTypeValue = EditorGUILayout.IntField(new GUIContent("GimmickValue", "イベントマスに対応した値を指定してください。\n EVENT: summer2025_hunt_event.id"), selectedTileData.gimmickTileTypeValue);
+                EditorGUI.EndDisabledGroup();
+                selectedTileData.isMovable = EditorGUILayout.Toggle(new GUIContent("移動可能か","キャラクターが通行可能かどうか（FieldTileに対しての設定）"), selectedTileData.isMovable);
+                EditorGUILayout.LabelField("位置", selectedTileData.position.ToString());
 
                 if (EditorGUI.EndChangeCheck())
                 {
@@ -396,7 +424,7 @@ namespace MapEditor
             GUILayout.Label("エクスポート", EditorStyles.boldLabel);
             GUILayout.Label($"出力先ファイル: {ExportPath}.txt", EditorStyles.miniBoldLabel);
 
-            if (GUILayout.Button("エクスポート"))
+            if (GUILayout.Button(new GUIContent("エクスポート","マイグレーションデータを出力します。\nsummer2025_hunt_tile.create!関数の引数として使用できます。")))
             {
                 try
                 {
@@ -413,6 +441,11 @@ namespace MapEditor
 
         private void OnSceneGUI(SceneView sceneView)
         {
+            if (isPlaceMode)
+            {
+                return;
+            }
+
             var e = Event.current;
             if (e.type == EventType.MouseDown && e.button == 0)
             {
