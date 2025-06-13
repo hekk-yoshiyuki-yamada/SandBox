@@ -16,7 +16,7 @@ public class CameraController : MonoBehaviour
 
     void Update()
     {
-        Vector3 move = Vector3.zero;
+        var move = Vector3.zero;
         if (Input.GetKey(KeyCode.LeftArrow)) move += Vector3.left;
         if (Input.GetKey(KeyCode.RightArrow)) move += Vector3.right;
         if (Input.GetKey(KeyCode.UpArrow)) move += Vector3.up;
@@ -39,16 +39,16 @@ public class CameraController : MonoBehaviour
     {
         if (targetSpriteRenderer == null) return;
 
-        Bounds bounds = targetSpriteRenderer.bounds;
-        Vector3 pos = camera.transform.position;
+        var bounds = targetSpriteRenderer.bounds;
+        var pos = camera.transform.position;
 
-        float vertExtent = camera.orthographicSize;
-        float horzExtent = vertExtent * Screen.width / Screen.height;
+        var vertExtent = camera.orthographicSize;
+        var horzExtent = vertExtent * Screen.width / Screen.height;
 
-        float minX = bounds.min.x + horzExtent;
-        float maxX = bounds.max.x - horzExtent;
-        float minY = bounds.min.y + vertExtent;
-        float maxY = bounds.max.y - vertExtent;
+        var minX = bounds.min.x + horzExtent;
+        var maxX = bounds.max.x - horzExtent;
+        var minY = bounds.min.y + vertExtent;
+        var maxY = bounds.max.y - vertExtent;
 
         pos.x = Mathf.Clamp(pos.x, minX, maxX);
         pos.y = Mathf.Clamp(pos.y, minY, maxY);

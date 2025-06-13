@@ -4,226 +4,649 @@ using UnityEditor.SceneManagement;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 using UnityEngine.Tilemaps;
 
-public class TileMapEditor : EditorWindow
+namespace MapEditor
 {
-    private string groupId = "1";
-    const string exportPathPrefix = "Assets/MapEditor";
-    const string sceneDir = "Assets/MapEditor/Scene";
-    const string templateScenePath = "Assets/MapEditor/Scene/MapEditorTemplate.unity";
-    private Camera sceneCamera;
-    private SpriteRenderer backgroundSprite;
-
-    string ExportPath => $"{exportPathPrefix}/{SceneManager.GetActiveScene().name}.csv";
-
-    [MenuItem("Boys2/Export Tile Map")]
-    public static void ShowWindow()
+    public class TileMapEditor : EditorWindow
     {
-        GetWindow<TileMapEditor>("Export Tile Map");
-    }
+        const string exportPathPrefix = "Assets/MapEditor";
+        const string sceneDir = exportPathPrefix + "/Scene";
+        const string templateScenePath = sceneDir + "/MapEditorTemplate.unity";
+        const string tileDataManagerPath = "Assets/MapEditor/TileDataManager.asset";
 
-    private void OnGUI()
-    {
-        GUILayout.Label("Export Tile Map", EditorStyles.boldLabel);
-        GUILayout.Label($"出力先ファイル: {ExportPath}", EditorStyles.boldLabel);
-        groupId = EditorGUILayout.TextField("GroupId", groupId);
+        // Scene関連のフィールド
+        private Camera sceneCamera;
+        private SpriteRenderer backgroundSprite;
+        private Tilemap currentFieldTilemap;
+        private Tilemap currentGimmickTilemap;
 
-        GUILayout.Space(10);
+        // タイルデータ関連のフィールド
+        private TileData selectedTileData = null;
+        private string groupId = "1";
 
-        if (GUILayout.Button("新規作成"))
+        // UI関連のフィールド
+        private bool showTileList = false;
+        private Vector2 mainScrollPosition;
+        private Vector2 scrollPosition;
+        private GUIStyle sectionStyle;
+        private GUIStyle[] sectionStyles;
+        private GUIStyle selectedTileStyle;
+        private GUIStyle normalTileStyle;
+        private string tileFilter = "";
+        private enum SortType { ID, X, Y, FieldTileType, GimmickTileType }
+        private SortType sortType = SortType.ID;
+        private bool sortAsc = true;
+        private Rect selectedTileRect;
+        private bool focusTileFromSceneView = false;
+
+        private TileDataManager tileDataManager;
+
+        string ExportPath => $"{exportPathPrefix}/{SceneManager.GetActiveScene().name}";
+
+        [MenuItem("Boys2/Export Tile Map")]
+        public static void ShowWindow()
         {
-            CreateNewScene();
+            GetWindow<TileMapEditor>("Tile Map Editor");
         }
 
-        if (GUILayout.Button("編集"))
+        private void OnEnable()
         {
-            EditScene();
+            SceneView.duringSceneGui += OnSceneGUI;
+            LoadOrCreateTileDataManager();
+            LoadTilemapsFromScene();
+            SyncTileDataWithScene();
         }
 
-        GUILayout.Space(10);
-
-        if (GUILayout.Button("Export"))
+        private void OnDisable()
         {
-            try
+            SceneView.duringSceneGui -= OnSceneGUI;
+        }
+
+        private void OnFocus()
+        {
+            var root = GameObject.Find("Root");
+            if (root == null) return;
+
+            var cameraObj = root.transform.Find("Camera");
+            if (cameraObj != null)
+                sceneCamera = cameraObj.GetComponent<Camera>();
+
+            var bgObj = root.transform.Find("MapRoot/background_9s");
+            if (bgObj != null)
+                backgroundSprite = bgObj.GetComponent<SpriteRenderer>();
+
+            LoadTilemapsFromScene();
+            SyncTileDataWithScene();
+        }
+
+        private void LoadOrCreateTileDataManager()
+        {
+            tileDataManager = AssetDatabase.LoadAssetAtPath<TileDataManager>(tileDataManagerPath);
+            if (tileDataManager == null)
             {
-                Export();
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"エクスポート中にエラーが発生しました: {ex.Message}");
-                EditorUtility.DisplayDialog("エラー", $"エクスポート中にエラーが発生しました: {ex.Message}", "OK");
-            }
-        }
-
-        GUILayout.Space(20);
-        GUILayout.Label("マップ設定", EditorStyles.boldLabel);
-
-        if (sceneCamera != null)
-        {
-            sceneCamera.orthographicSize = EditorGUILayout.FloatField("Camera倍率変更", sceneCamera.orthographicSize);
-        }
-
-        if (backgroundSprite != null)
-        {
-            backgroundSprite.size = EditorGUILayout.Vector2Field("マップサイズ(縦横想定サイズ＋２してね)", backgroundSprite.size);
-        }
-    }
-
-    private void OnFocus()
-    {
-        var root = GameObject.Find("Root");
-        if (root == null) return;
-
-        var cameraObj = root.transform.Find("Camera");
-        if (cameraObj != null)
-            sceneCamera = cameraObj.GetComponent<Camera>();
-
-        var bgObj = root.transform.Find("MapRoot/background_9s");
-        if (bgObj != null)
-            backgroundSprite = bgObj.GetComponent<SpriteRenderer>();
-    }
-
-    private void CreateNewScene()
-    {
-        if (!File.Exists(templateScenePath))
-        {
-            EditorUtility.DisplayDialog("エラー", $"テンプレートシーンが見つかりません: {templateScenePath}", "OK");
-            return;
-        }
-        if (!Directory.Exists(sceneDir))
-        {
-            Directory.CreateDirectory(sceneDir);
-            AssetDatabase.Refresh();
-        }
-
-        int index = 1;
-        string newScenePath;
-        do
-        {
-            newScenePath = $"{sceneDir}/tilemap_{groupId}_{index}.unity";
-            index++;
-        } while (File.Exists(newScenePath));
-
-        File.Copy(templateScenePath, newScenePath);
-        AssetDatabase.Refresh();
-        EditorSceneManager.OpenScene(newScenePath);
-    }
-
-    private void EditScene()
-    {
-        string path = EditorUtility.OpenFilePanel("シーンを選択", sceneDir, "unity");
-        if (!string.IsNullOrEmpty(path))
-        {
-            // Unityプロジェクト内の相対パスに変換
-            if (path.StartsWith(Application.dataPath))
-            {
-                string relativePath = "Assets" + path.Substring(Application.dataPath.Length);
-                EditorSceneManager.OpenScene(relativePath);
-            }
-            else
-            {
-                EditorUtility.DisplayDialog("エラー", "Assetsフォルダ内のシーンのみ開けます", "OK");
+                tileDataManager = ScriptableObject.CreateInstance<TileDataManager>();
+                AssetDatabase.CreateAsset(tileDataManager, tileDataManagerPath);
+                AssetDatabase.SaveAssets();
             }
         }
-    }
 
-    private void Export()
-    {
-        try
+        private void LoadTilemapsFromScene()
         {
-            // 既存のエクスポートファイルがあれば削除
-            if (File.Exists(ExportPath))
-            {
-                File.Delete(ExportPath);
-                AssetDatabase.Refresh();
-            }
-
-            var lastId = 0;
-
-            // Scene内のTilemapをすべて取得
             var tilemaps = GameObject.FindObjectsOfType<Tilemap>();
-            if (tilemaps == null || tilemaps.Length == 0)
+            if (tilemaps != null && tilemaps.Length > 0)
             {
-                throw new System.Exception("Tilemapが見つかりませんでした。");
+                currentFieldTilemap = tilemaps.FirstOrDefault(t => t.gameObject.name == "Field");
+                currentGimmickTilemap = tilemaps.FirstOrDefault(t => t.gameObject.name == "Gimmick");
             }
+        }
 
-            var fieldTilemap = tilemaps.FirstOrDefault(t => t.gameObject.name == "Field");
-            var gimmickTilemap = tilemaps.FirstOrDefault(t => t.gameObject.name == "Gimmick");
+        private void SyncTileDataWithScene()
+        {
+            if (tileDataManager == null) return;
 
-            var sb = new StringBuilder();
-            if (!File.Exists(ExportPath))
+            var sceneTiles = new HashSet<Vector3Int>();
+            if (currentFieldTilemap != null)
             {
-                sb.AppendLine("id, group_id, field_tile_type_id, gimmick_tile_type_id, gimmick_tile_type_value, position_x, position_y");
-            }
-
-            // Field, Gimmick両方のTilemapのバウンディングボックスを取得
-            var bounds = new BoundsInt();
-            if (fieldTilemap)
-                bounds = fieldTilemap.cellBounds;
-            if (gimmickTilemap)
-                bounds = MergeBounds(bounds, gimmickTilemap.cellBounds);
-
-            var id = lastId + 1;
-            for (var x = bounds.xMin; x < bounds.xMax; x++)
-            {
-                for (var y = bounds.yMin; y < bounds.yMax; y++)
+                foreach (var pos in currentFieldTilemap.cellBounds.allPositionsWithin)
                 {
-                    var pos = new Vector3Int(x, y, 0);
-                    var fieldId = "";
-                    var gimmickId = "";
-                    var gimmickValue = "";
-
-                    if (fieldTilemap != null)
-                    {
-                        var tile = fieldTilemap.GetTile(pos);
-                        if (tile != null)
-                            fieldId = tile.name;
-                    }
-                    if (gimmickTilemap != null)
-                    {
-                        var tile = gimmickTilemap.GetTile(pos);
-                        if (tile != null)
-                            gimmickId = tile.name;
-                    }
-
-                    // どちらかにTileがある場合のみ出力
-                    if (string.IsNullOrEmpty(fieldId) && string.IsNullOrEmpty(gimmickId)) continue;
-
-                    sb.AppendLine($"{id}, {groupId}, {fieldId}, {gimmickId}, {gimmickValue}, {x}, {y}");
-                    id++;
+                    if (currentFieldTilemap.HasTile(pos))
+                        sceneTiles.Add(pos);
                 }
             }
 
-            File.AppendAllText(ExportPath, sb.ToString(), Encoding.UTF8);
-            AssetDatabase.Refresh();
-            EditorUtility.DisplayDialog("Export", "TileMapのエクスポートが完了しました", "OK");
+            if (currentGimmickTilemap != null)
+            {
+                foreach (var pos in currentGimmickTilemap.cellBounds.allPositionsWithin)
+                {
+                    if (currentGimmickTilemap.HasTile(pos))
+                        sceneTiles.Add(pos);
+                }
+            }
+
+            foreach (var pos in sceneTiles)
+            {
+                if (!tileDataManager.tilesData.Any(d => d.position == pos))
+                {
+                    var newData = new TileData
+                    {
+                        id = tileDataManager.tilesData.Count > 0 ? tileDataManager.tilesData.Max(d => d.id) + 1 : 1,
+                        groupId = int.Parse(groupId),
+                        position = pos,
+                        fieldTileType = FieldTileType.NONE,
+                        gimmickTileType = GimmickTileType.NONE,
+                    };
+                    tileDataManager.tilesData.Add(newData);
+                    EditorUtility.SetDirty(tileDataManager);
+                }
+            }
+
+            tileDataManager.tilesData.RemoveAll(d => !sceneTiles.Contains(d.position));
+            EditorUtility.SetDirty(tileDataManager);
         }
-        catch (System.Exception ex)
+
+        private void OnGUI()
         {
-            throw new System.Exception($"エクスポート処理中にエラーが発生しました: {ex.Message}");
+            // SceneViewから選択された直後のみフォーカス
+            if (focusTileFromSceneView && Event.current.type == EventType.Layout)
+            {
+                // 選択タイルが表示範囲外ならスクロール
+                float viewHeight = 400f;
+                if (selectedTileRect.y < scrollPosition.y)
+                {
+                    scrollPosition.y = selectedTileRect.y;
+                }
+                else if (selectedTileRect.yMax > scrollPosition.y + viewHeight)
+                {
+                    scrollPosition.y = selectedTileRect.yMax - viewHeight;
+                }
+                focusTileFromSceneView = false;
+            }
+            mainScrollPosition = EditorGUILayout.BeginScrollView(mainScrollPosition);
+            InitializeStyles();
+            DrawBasicSettings();
+            EditorGUILayout.Space(10);
+            DrawSceneControls();
+            EditorGUILayout.Space(10);
+            DrawExportSection();
+            EditorGUILayout.Space(10);
+            DrawTileEditingSection();
+            EditorGUILayout.EndScrollView();
         }
-    }
 
-    private BoundsInt MergeBounds(BoundsInt a, BoundsInt b)
-    {
-        if (a.size == Vector3Int.zero) return b;
-        if (b.size == Vector3Int.zero) return a;
+        private void InitializeStyles()
+        {
+            if (sectionStyle == null)
+            {
+                sectionStyle = new GUIStyle(EditorStyles.helpBox);
+                sectionStyle.margin = new RectOffset(5, 5, 5, 5);
+                sectionStyle.padding = new RectOffset(10, 10, 10, 10);
+            }
 
-        int xMin = Mathf.Min(a.xMin, b.xMin);
-        int yMin = Mathf.Min(a.yMin, b.yMin);
-        int zMin = Mathf.Min(a.zMin, b.zMin);
+            if (sectionStyles == null || sectionStyles.Length == 0)
+            {
+                sectionStyles = new GUIStyle[4];
+                sectionStyles[0] = new GUIStyle(sectionStyle);
+                sectionStyles[0].normal.background = CreateColorTexture(new Color(0.8f, 0.9f, 1f, 0.5f));
+                sectionStyles[1] = new GUIStyle(sectionStyle);
+                sectionStyles[1].normal.background = CreateColorTexture(new Color(0.9f, 1f, 0.8f, 0.5f));
+                sectionStyles[2] = new GUIStyle(sectionStyle);
+                sectionStyles[2].normal.background = CreateColorTexture(new Color(1f, 0.9f, 0.8f, 0.5f));
+                sectionStyles[3] = new GUIStyle(sectionStyle);
+                sectionStyles[3].normal.background = CreateColorTexture(new Color(1f, 0.8f, 0.9f, 0.5f));
+            }
 
-        int xMax = Mathf.Max(a.xMax, b.xMax);
-        int yMax = Mathf.Max(a.yMax, b.yMax);
-        int zMax = Mathf.Max(a.zMax, b.zMax);
+            if (normalTileStyle == null)
+            {
+                normalTileStyle = new GUIStyle(EditorStyles.label);
+                normalTileStyle.alignment = TextAnchor.MiddleLeft;
+                normalTileStyle.fontSize = 13;
+                normalTileStyle.fixedHeight = 32;
+                normalTileStyle.padding = new RectOffset(8, 8, 0, 0);
+            }
+            if (selectedTileStyle == null)
+            {
+                selectedTileStyle = new GUIStyle(normalTileStyle);
+                selectedTileStyle.normal.background = CreateColorTexture(new Color(0.3f, 0.5f, 1f, 0.7f));
+                selectedTileStyle.normal.textColor = Color.white;
+            }
+        }
 
-        return new BoundsInt(
-            xMin, yMin, zMin,
-            xMax - xMin,
-            yMax - yMin,
-            zMax - zMin
-        );
+        private Texture2D CreateColorTexture(Color color)
+        {
+            var texture = new Texture2D(1, 1);
+            texture.SetPixel(0, 0, color);
+            texture.Apply();
+            return texture;
+        }
+
+        private void DrawBasicSettings()
+        {
+            GUILayout.Label("基本設定", EditorStyles.boldLabel);
+            groupId = EditorGUILayout.TextField("Group ID", groupId);
+            GUILayout.Space(5);
+            GUILayout.Label("マップ設定", EditorStyles.boldLabel);
+
+            if (sceneCamera != null)
+            {
+                sceneCamera.orthographicSize = EditorGUILayout.FloatField("Camera倍率変更", sceneCamera.orthographicSize);
+            }
+
+            if (backgroundSprite != null)
+            {
+                backgroundSprite.size = EditorGUILayout.Vector2Field("マップサイズ(縦横想定サイズ＋２してね)", backgroundSprite.size);
+            }
+        }
+
+        private void DrawSceneControls()
+        {
+            GUILayout.Label("シーン操作", EditorStyles.boldLabel);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("新規作成"))
+            {
+                CreateNewScene();
+            }
+
+            if (GUILayout.Button("編集"))
+            {
+                EditScene();
+            }
+
+            GUILayout.EndHorizontal();
+        }
+
+        private void DrawTileList()
+        {
+            //  絞り込み・ソート
+            EditorGUILayout.BeginHorizontal();
+            tileFilter = EditorGUILayout.TextField("絞り込み(名前/座標)", tileFilter);
+            sortType = (SortType)EditorGUILayout.EnumPopup("ソート", sortType);
+            sortAsc = GUILayout.Toggle(sortAsc, sortAsc ? "昇順" : "降順", GUILayout.Width(60));
+            EditorGUILayout.EndHorizontal();
+            var list = SortFilter();
+
+            scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition, GUILayout.Height(400));
+            if (list.Count == 0)
+            {
+                EditorGUILayout.HelpBox("タイルデータがありません。", MessageType.Info);
+            }
+            else
+            {
+                foreach (var tileData in list)
+                {
+                    DrawTileCell(tileData);
+                    if (selectedTileData == tileData)
+                    {
+                        selectedTileRect = GUILayoutUtility.GetLastRect();
+                        DrawSelectedTileGUI();
+                    }
+                }
+            }
+            EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawTileCell(TileData tileData)
+        {
+            var tileName = "";
+            if (currentFieldTilemap != null && currentFieldTilemap.HasTile(tileData.position))
+                tileName = currentFieldTilemap.GetTile(tileData.position).name;
+            else if (currentGimmickTilemap != null && currentGimmickTilemap.HasTile(tileData.position))
+                tileName = currentGimmickTilemap.GetTile(tileData.position).name;
+
+            EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
+
+
+            var isSelected = selectedTileData == tileData;
+            var style = isSelected ? selectedTileStyle : normalTileStyle;
+            if (GUILayout.Button($"{tileName} ({tileData.position.x}, {tileData.position.y})", style, GUILayout.Height(32)))
+            {
+                selectedTileData = tileData;
+                SceneView.RepaintAll();
+
+                if (SceneView.lastActiveSceneView != null)
+                {
+                    Vector3 worldPos;
+                    if (currentFieldTilemap != null && currentFieldTilemap.HasTile(tileData.position))
+                        worldPos = currentFieldTilemap.CellToWorld(tileData.position) + currentFieldTilemap.cellSize / 2;
+                    else
+                        worldPos = currentGimmickTilemap.CellToWorld(tileData.position) + currentGimmickTilemap.cellSize / 2;
+
+                    SceneView.lastActiveSceneView.LookAt(worldPos);
+                }
+            }
+
+            if (GUILayout.Button("削除", GUILayout.Width(60), GUILayout.Height(32)))
+            {
+                if (EditorUtility.DisplayDialog("確認", $"タイルデータ (ID: {tileData.id}) を削除してもよろしいですか？", "はい", "いいえ"))
+                {
+                    tileDataManager.tilesData.Remove(tileData);
+                    if (selectedTileData == tileData)
+                    {
+                        selectedTileData = null;
+                    }
+                    EditorUtility.SetDirty(tileDataManager);
+                    GUIUtility.ExitGUI();
+                }
+            }
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private void DrawTileEditingSection()
+        {
+            GUILayout.Label("タイル編集", EditorStyles.boldLabel);
+
+            if (currentFieldTilemap == null && currentGimmickTilemap == null)
+            {
+                EditorGUILayout.HelpBox("Tilemapが見つかりません。シーンにTilemapがあるか確認してください。", MessageType.Warning);
+                return;
+            }
+
+            EditorGUI.BeginChangeCheck();
+            if (EditorGUI.EndChangeCheck())
+            {
+                SceneView.RepaintAll();
+            }
+
+            if (showTileList = EditorGUILayout.Foldout(showTileList, "タイルリスト", true))
+            {
+                DrawTileList();
+            }
+        }
+
+        private void DrawSelectedTileGUI()
+        {
+            EditorGUILayout.Space(5);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            EditorGUILayout.LabelField($"選択中のタイル: [{selectedTileData.id}][{selectedTileData.gimmickTileType}][{selectedTileData.fieldTileType}][{selectedTileData.position.x}", EditorStyles.boldLabel);
+
+            if (selectedTileData != null)
+            {
+                EditorGUI.BeginChangeCheck();
+                selectedTileData.id = EditorGUILayout.IntField("ID", selectedTileData.id);
+                selectedTileData.groupId = int.Parse(groupId);
+                selectedTileData.fieldTileType =
+                    (FieldTileType)EditorGUILayout.EnumPopup("Field Tile", selectedTileData.fieldTileType);
+                selectedTileData.gimmickTileType =
+                    (GimmickTileType)EditorGUILayout.EnumPopup("Gimmick Tile", selectedTileData.gimmickTileType);
+                selectedTileData.gimmickTileTypeValue =
+                    EditorGUILayout.IntField("Gimmick値", selectedTileData.gimmickTileTypeValue);
+                selectedTileData.isMovable = EditorGUILayout.Toggle("移動可能", selectedTileData.isMovable);
+                selectedTileData.position = EditorGUILayout.Vector3IntField("位置", selectedTileData.position);
+
+                if (EditorGUI.EndChangeCheck())
+                {
+                    EditorUtility.SetDirty(tileDataManager);
+                }
+
+                if (GUILayout.Button("選択解除"))
+                {
+                    selectedTileData = null;
+                    SceneView.RepaintAll();
+                }
+            }
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawExportSection()
+        {
+            GUILayout.Label("エクスポート", EditorStyles.boldLabel);
+            GUILayout.Label($"出力先ファイル: {ExportPath}.txt", EditorStyles.miniBoldLabel);
+
+            if (GUILayout.Button("エクスポート"))
+            {
+                try
+                {
+                    Export();
+                    EditorUtility.DisplayDialog("エクスポート完了", "タイルマップデータのエクスポートが完了しました。", "OK");
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError($"エクスポート中にエラーが発生しました: {ex.Message}");
+                    EditorUtility.DisplayDialog("エラー", $"エクスポート中にエラーが発生しました: {ex.Message}", "OK");
+                }
+            }
+        }
+
+        private void OnSceneGUI(SceneView sceneView)
+        {
+            var e = Event.current;
+            if (e.type == EventType.MouseDown && e.button == 0)
+            {
+                var mousePosition = e.mousePosition;
+                var ray = HandleUtility.GUIPointToWorldRay(mousePosition);
+                var worldPoint = ray.origin - ray.direction * (ray.origin.z / ray.direction.z);
+                var cellPosition = Vector3Int.zero;
+                var tileExists = false;
+
+                if (currentFieldTilemap != null)
+                {
+                    cellPosition = currentFieldTilemap.WorldToCell(worldPoint);
+                    tileExists = currentFieldTilemap.HasTile(cellPosition);
+                }
+
+                if (!tileExists && currentGimmickTilemap != null)
+                {
+                    cellPosition = currentGimmickTilemap.WorldToCell(worldPoint);
+                    tileExists = currentGimmickTilemap.HasTile(cellPosition);
+                }
+
+                if (tileExists)
+                {
+                    selectedTileData = tileDataManager.tilesData.FirstOrDefault(d => d.position == cellPosition);
+                    focusTileFromSceneView = true;
+                    Repaint();
+                    e.Use();
+                }
+            }
+
+            // ハイライト
+            if (selectedTileData != null)
+            {
+                Vector3 cellCenter;
+                Vector3 cellSize;
+                if (currentFieldTilemap != null && currentFieldTilemap.HasTile(selectedTileData.position))
+                {
+                    cellCenter = currentFieldTilemap.GetCellCenterWorld(selectedTileData.position);
+                    cellSize = currentFieldTilemap.cellSize;
+                }
+                else if (currentGimmickTilemap != null && currentGimmickTilemap.HasTile(selectedTileData.position))
+                {
+                    cellCenter = currentGimmickTilemap.GetCellCenterWorld(selectedTileData.position);
+                    cellSize = currentGimmickTilemap.cellSize;
+                }
+                else
+                {
+                    return;
+                }
+
+                DrawHandle(cellSize, cellCenter);
+            }
+        }
+
+        private void CreateNewScene()
+        {
+            if (!File.Exists(templateScenePath))
+            {
+                EditorUtility.DisplayDialog("エラー", $"テンプレートシーンが見つかりません: {templateScenePath}", "OK");
+                return;
+            }
+
+            if (!Directory.Exists(sceneDir))
+            {
+                Directory.CreateDirectory(sceneDir);
+                AssetDatabase.Refresh();
+            }
+
+            var index = 1;
+            string newScenePath;
+            do
+            {
+                newScenePath = $"{sceneDir}/tilemap_{groupId}_{index}.unity";
+                index++;
+            } while (File.Exists(newScenePath));
+
+            File.Copy(templateScenePath, newScenePath);
+            AssetDatabase.Refresh();
+            EditorSceneManager.OpenScene(newScenePath);
+            LoadTilemapsFromScene();
+            SyncTileDataWithScene();
+        }
+
+        private void EditScene()
+        {
+            var path = EditorUtility.OpenFilePanel("シーンを選択", sceneDir, "unity");
+            if (!string.IsNullOrEmpty(path))
+            {
+                if (path.StartsWith(Application.dataPath))
+                {
+                    var relativePath = "Assets" + path.Substring(Application.dataPath.Length);
+                    EditorSceneManager.OpenScene(relativePath);
+                    LoadTilemapsFromScene();
+                    SyncTileDataWithScene();
+                }
+                else
+                {
+                    EditorUtility.DisplayDialog("エラー", "Assetsフォルダ内のシーンのみ開けます", "OK");
+                }
+            }
+        }
+
+        private void Export()
+        {
+            var outputPath = $"{ExportPath}.txt";
+            try
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("Summer2025HuntTile.create!(");
+                sb.AppendLine("      [");
+                for (var i = 0; i < tileDataManager.tilesData.Count; i++)
+                {
+                    var data = tileDataManager.tilesData[i];
+                    var line =
+                        $"        {{id: {data.id}, group_id: {data.groupId}, field_tile_type_id: {(int)data.fieldTileType}, gimmick_tile_type_id: {(int)data.gimmickTileType}, gimmick_tile_type_value: {data.gimmickTileTypeValue}, is_movable: {(data.isMovable ? 1 : 0)}, position_x: {data.position.x}, position_y: {data.position.y}}}";
+                    if (i < tileDataManager.tilesData.Count - 1)
+                        line += ",";
+                    sb.AppendLine(line);
+                }
+
+                sb.AppendLine("      ])");
+                sb.AppendLine("Summer2025HuntTile.expire_all_cache");
+
+                var directory = Path.GetDirectoryName(outputPath);
+                if (!Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                File.WriteAllText(outputPath, sb.ToString(), Encoding.UTF8);
+                AssetDatabase.Refresh();
+                Debug.Log($"タイルマップデータを出力しました: {outputPath}");
+            }
+            catch (System.Exception ex)
+            {
+                throw new System.Exception($"エクスポート中にエラーが発生しました: {ex.Message}");
+            }
+        }
+
+        private void DrawHandle(Vector3 cellSize, Vector3 cellCenter)
+        {
+            var tileColor = Color.yellow;
+            TileBase tile = null;
+
+            // 選択タイルの取得
+            if (currentFieldTilemap != null && currentFieldTilemap.HasTile(selectedTileData.position))
+            {
+                tile = currentFieldTilemap.GetTile(selectedTileData.position);
+            }
+            else if (currentGimmickTilemap != null && currentGimmickTilemap.HasTile(selectedTileData.position))
+            {
+                tile = currentGimmickTilemap.GetTile(selectedTileData.position);
+            }
+
+            // タイルのSpriteから平均色を取得
+            if (tile is Tile t && t.sprite != null && t.sprite.texture != null)
+            {
+                var tex = t.sprite.texture;
+                try
+                {
+                    // SpriteのRect範囲のピクセルを取得
+                    var rect = t.sprite.textureRect;
+                    var pixels = tex.GetPixels((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
+                    if (pixels.Length > 0)
+                    {
+                        float r = 0, g = 0, b = 0;
+                        foreach (var p in pixels)
+                        {
+                            r += p.r;
+                            g += p.g;
+                            b += p.b;
+                        }
+
+                        r /= pixels.Length;
+                        g /= pixels.Length;
+                        b /= pixels.Length;
+                        tileColor = new Color(r, g, b, 1f);
+                    }
+                }
+                catch
+                {
+                    /* 読み取り不可の場合は無視 */
+                }
+            }
+
+            // 選択タイルのハイライト
+            var invColor = new Color(1f - tileColor.r, 1f - tileColor.g, 1f - tileColor.b, 1f);
+            Handles.color = invColor;
+
+            var half = cellSize * 0.45f;
+            var verts = new Vector3[]
+            {
+                cellCenter + new Vector3(-half.x, -half.y, 0),
+                cellCenter + new Vector3(-half.x, half.y, 0),
+                cellCenter + new Vector3(half.x, half.y, 0),
+                cellCenter + new Vector3(half.x, -half.y, 0),
+                cellCenter + new Vector3(-half.x, -half.y, 0),
+            };
+            Handles.DrawAAPolyLine(10f, verts);
+        }
+
+        private List<TileData> SortFilter()
+        {
+            List<TileData> list = tileDataManager.tilesData;
+            if (!string.IsNullOrEmpty(tileFilter))
+            {
+                list = list.Where(d =>
+                {
+                    var name = "";
+                    if (currentFieldTilemap != null && currentFieldTilemap.HasTile(d.position))
+                    {
+                        name = currentFieldTilemap.GetTile(d.position).name;
+                    }
+                    else if (currentGimmickTilemap != null && currentGimmickTilemap.HasTile(d.position))
+                    {
+                        name = currentGimmickTilemap.GetTile(d.position).name;
+                    }
+                    return name.Contains(tileFilter) ||
+                           d.position.x.ToString().Contains(tileFilter) ||
+                           d.position.y.ToString().Contains(tileFilter);
+                }).ToList();
+            }
+
+            return sortType switch
+            {
+                SortType.ID => sortAsc ? list.OrderBy(d => d.id).ToList() : list.OrderByDescending(d => d.id).ToList(),
+                SortType.X => sortAsc
+                    ? list.OrderBy(d => d.position.x).ToList()
+                    : list.OrderByDescending(d => d.position.x).ToList(),
+                SortType.Y => sortAsc
+                    ? list.OrderBy(d => d.position.y).ToList()
+                    : list.OrderByDescending(d => d.position.y).ToList(),
+                _ => list
+            };
+        }
     }
 }
